@@ -14,111 +14,134 @@ struct Product {
 };
 
 
-vector<Product> items;// stores inventory
+struct CartItem {
+    int id;
+    int qty;
+};
 
 
-vector<pair<int,int>> cart;// cart store karega
-stack<vector<pair<int,int>>> cartUndo;// cart undo 
-
-
-queue<vector<pair<int,int>>> orders;// orders
-
-
-stack<vector<Product>> invUndo;// inventory undo
-
-
-//Add Product
-void addProduct(int id, string name, int qty, float price) {
-    Product p;
-
-    p.id = id;
-    p.name = name;
-    p.qty = qty;
-    p.price = price;
-    p.sold = 0;
-    items.push_back(p);
-}
+vector<Product> items;// inventory
+vector<CartItem> cart;// cart
+stack<vector<CartItem>> cartUndo;// undo cart
+queue<vector<CartItem>> orders;// order queue
+stack<vector<Product>> invUndo;// undo inventory
 
 
 
 int findProduct(int id) {
     for (int i = 0; i < items.size(); i++) {
-        if (items[i].id == id)
+        if (items[i].id == id) {
             return i;
+        }
     }
     return -1;
 }
 
 
-//adding to cart
-void saveCart() {
+
+void addProduct(int id, string name, int qty, float price) {
+
+    int index = findProduct(id);
+
+    if (index != -1) {
+        
+        items[index].qty += qty;
+        items[index].price = price;
+
+        cout << "Product already exists, quantity updated.\n";
+    } 
+    else {
+        Product p;
+        p.id = id;
+        p.name = name;
+        p.qty = qty;
+        p.price = price;
+        p.sold = 0;
+
+        items.push_back(p);
+
+        cout << "Product added successfully.\n";
+    }
+}
+
+
+void saveCartState() {
     cartUndo.push(cart);
 }
 
-void addCart(int id, int q) {
-    saveCart();
-    cart.push_back({id, q});
-    cout << "Added to cart\n";
+
+void addToCart(int id, int qty) {
+    saveCartState();
+
+    CartItem item;
+    item.id = id;
+    item.qty = qty;
+
+    cart.push_back(item);
+
+    cout << "Item added to cart.\n";
 }
+
 
 void undoCart() {
     if (!cartUndo.empty()) {
         cart = cartUndo.top();
         cartUndo.pop();
-        cout << "Cart undo done\n";
+        cout << "Cart undo successful.\n";
     } else {
-        cout << "Nothing to undo\n";
+        cout << "Nothing to undo.\n";
     }
 }
 
 
-//placing order
 void placeOrder() {
     if (cart.empty()) {
-        cout << "Cart empty\n";
+        cout << "Cart is empty.\n";
         return;
     }
 
     orders.push(cart);
     cart.clear();
 
-    cout << "Order placed\n";
+    cout << "Order placed successfully.\n";
 }
 
 
-//bill generation
 void processOrder() {
+
     if (orders.empty()) {
-        cout << "No orders\n";
+        cout << "No orders to process.\n";
         return;
     }
-
     invUndo.push(items);
 
-    vector<pair<int,int>> ord = orders.front();
+    vector<CartItem> currentOrder = orders.front();
     orders.pop();
 
     float total = 0;
 
-    cout << "\n*** BILL ***\n";
+    cout << "\n**** BILL ****\n";
 
-    for (int i = 0; i < ord.size(); i++) {
-        int id = ord[i].first;
-        int q = ord[i].second;
+    for (int i = 0; i < currentOrder.size(); i++) {
 
-        int idx = findProduct(id);
+        int id = currentOrder[i].id;
+        int qty = currentOrder[i].qty;
 
-        if (idx != -1 && items[idx].qty >= q) {
-            float cost = items[idx].price * q;
+        int index = findProduct(id);
 
-            cout << items[idx].name << " x "
-                 << q << " = " << cost << endl;
+        if (index != -1 && items[index].qty >= qty) {
 
-            items[idx].qty -= q;
-            items[idx].sold += q;
+            float cost = items[index].price * qty;
+
+            cout << items[index].name << " x "
+                 << qty << " = " << cost << endl;
+
+            items[index].qty -= qty;
+            items[index].sold += qty;
 
             total += cost;
-        } else {
+        } 
+        else {
             cout << "Item not available: " << id << endl;
         }
     }
@@ -127,21 +150,21 @@ void processOrder() {
 }
 
 
-//undo feature
-void undoLast() {
+
+void undoLastTransaction() {
     if (!invUndo.empty()) {
         items = invUndo.top();
         invUndo.pop();
-        cout << "Undo successful\n";
+        cout << "Undo successful.\n";
     } else {
-        cout << "Nothing to undo\n";
+        cout << "Nothing to undo.\n";
     }
 }
 
 
-// searching product by name
-void searchName(string name) {
-    cout << "\nSearch result:\n";
+void searchByName(string name) {
+
+    cout << "\nSearch Results:\n";
 
     for (int i = 0; i < items.size(); i++) {
         if (items[i].name == name) {
@@ -152,27 +175,28 @@ void searchName(string name) {
 }
 
 
-//displaying inventory
+
 void showInventory() {
-    if (items.size()<1){
-        cout<<endl<<"Please Add a Product into the inventory first."<<endl;
+
+    if (items.empty()) {
+        cout << "\nNo products in inventory.\n";
         return;
     }
-    cout << "\n--- Inventory ---\n";
+
+    cout << "\n*** Inventory ***\n";
 
     for (int i = 0; i < items.size(); i++) {
         cout << items[i].id << " "
              << items[i].name << " "
              << items[i].qty << " "
-             << items[i].price << " "<<endl;
+             << items[i].price << endl;
     }
 }
 
 int main() {
     int choice;
-
     while (true) {
-        cout << "\n*** MENU ***\n";
+        cout << "\n====== MENU ======\n";
         cout << "1. Add Product\n";
         cout << "2. Show Inventory\n";
         cout << "3. Add to Cart\n";
@@ -180,21 +204,22 @@ int main() {
         cout << "5. Place Order\n";
         cout << "6. Process Order\n";
         cout << "7. Undo Transaction\n";
-        cout << "8. Search Product by Name\n";
+        cout << "8. Search Product\n";
         cout << "0. Exit\n";
 
-        cout << "Enter choice: ";
+        
+        cout << "Enter your choice: ";
         cin >> choice;
 
         if (choice == 1) {
-            int id, q;
+            int id, qty;
             float price;
             string name;
 
-            cout << "Enter ID | Name | Qty | Price : ";
-            cin >> id >> name >> q >> price;
+            cout << "Enter ID Name Qty Price: ";
+            cin >> id >> name >> qty >> price;
 
-            addProduct(id, name, q, price);
+            addProduct(id, name, qty, price);
         }
 
         else if (choice == 2) {
@@ -202,11 +227,12 @@ int main() {
         }
 
         else if (choice == 3) {
-            int id, q;
-            cout << "Enter product ID and quantity: ";
-            cin >> id >> q;
+            int id, qty;
 
-            addCart(id, q);
+            cout << "Enter product ID and quantity: ";
+            cin >> id >> qty;
+
+            addToCart(id, qty);
         }
 
         else if (choice == 4) {
@@ -222,15 +248,16 @@ int main() {
         }
 
         else if (choice == 7) {
-            undoLast();
+            undoLastTransaction();
         }
 
         else if (choice == 8) {
             string name;
-            cout << "Enter name: ";
+
+            cout << "Enter product name: ";
             cin >> name;
 
-            searchName(name);
+            searchByName(name);
         }
 
         else if (choice == 0) {
@@ -239,7 +266,7 @@ int main() {
         }
 
         else {
-            cout << "Invalid choice!\n";
+            cout << "Invalid choice.\n";
         }
     }
 
